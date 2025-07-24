@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PT Clipboard Helper</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+    .row { margin-bottom: 1em; }
+    textarea { width: 80%; height: 60px; }
+    button { padding: 8px 12px; margin-left: 10px; }
+    .flash-red { background-color: #f88 !important; }
+    .flash-yellow { background-color: #ff8 !important; }
+    .flash-green { background-color: #8f8 !important; }
+  </style>
+</head>
+<body>
+  <h2>PT Clipboard Helper</h2>
+  <div id="container"></div>
+
+  <script>
+    const rowCount = 4;
+    const rows = [];
+
+    function createRow(index) {
+      const div = document.createElement('div');
+      div.className = 'row';
+
+      const textarea = document.createElement('textarea');
+      textarea.id = `txt${index}`;
+
+      const button = document.createElement('button');
+      button.textContent = 'Use Clipboard';
+      button.id = `btn${index}`;
+
+      div.appendChild(textarea);
+      div.appendChild(button);
+      document.getElementById('container').appendChild(div);
+
+      const row = {
+        index,
+        textarea,
+        button,
+        manualEdited: false,
+        lastPT: getPT(textarea.value),
+        lastClickTime: 0
+      };
+
+      textarea.addEventListener('input', () => {
+        row.manualEdited = true;
+        row.lastPT = getPT(textarea.value);
+      });
+
+      button.addEventListener('click', async () => {
+        const now = Date.now();
+        if (now - row.lastClickTime < 500) return;
+        row.lastClickTime = now;
+
+        const textArea = row.textarea;
+
+        // Manual edit → copy and exit
+        if (row.manualEdited) {
+          navigator.clipboard.writeText(textArea.value);
+          row.manualEdited = false;
+          return;
+        }
+
+        let clipText = await navigator.clipboard.readText();
+        clipText = clipText.trim();
+        const words = clipText.split(/\s+/);
+        const lastWord = words.at(-1);
+
+        if (!/^pt\d+$/i.test(lastWord)) {
+          navigator.clipboard.writeText(textArea.value);
+          flash(button, 'red');
+          return;
+        }
+
+        if (row.lastPT.toLowerCase() === lastWord.toLowerCase()) {
+          flash(button, 'yellow');
+          return;
+        }
+
+        const newText = replacePT(textArea.value, lastWord);
+        if (newText !== null) {
+          textArea.value = newText;
+          navigator.clipboard.writeText(newText);
+          row.manualEdited = false;
+          row.lastPT = lastWord;
+          flash(button, 'green');
+        } else {
+          navigator.clipboard.writeText(textArea.value);
+          flash(button, 'red');
+        }
+      });
+
+      return row;
+    }
+
+    function flash(button, color) {
+      const cls = `flash-${color}`;
+      button.classList.add(cls);
+      button.disabled = true;
+      setTimeout(() => {
+        button.classList.remove(cls);
+        button.disabled = false;
+      }, 1000);
+    }
+
+    function getPT(text) {
+      const match = text.match(/\bpt\d+\b/i);
+      return match ? match[0] : '';
+    }
+
+    function replacePT(text, newPT) {
+      const match = text.match(/\bpt\d+\b/i);
+      if (match) {
+        return text.slice(0, match.index) + newPT + text.slice(match.index + match[0].length);
+      }
+      return null;
+    }
+
+    // Load from localStorage
+    function loadState() {
+      for (let i = 1; i <= rowCount; i++) {
+        const saved = localStorage.getItem(`row${i}`);
+        if (saved) {
+          document.getElementById(`txt${i}`).value = saved;
+          rows[i - 1].lastPT = getPT(saved);
+        }
+      }
+    }
+
+    // Save to localStorage
+    window.addEventListener('beforeunload', () => {
+      rows.forEach((row, i) => {
+        localStorage.setItem(`row${i + 1}`, row.textarea.value);
+      });
+    });
+
+    // Initialize
+    for (let i = 1; i <= rowCount; i++) {
+      rows.push(createRow(i));
+    }
+
+    window.addEventListener('load', loadState);
+  </script>
+</body>
+</html>
