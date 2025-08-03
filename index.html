@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PT copy thing</title>
+  <title>PT copy thingy</title>
   <style>
     body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
     .row { margin-bottom: 1em; }
@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <h2>PT copy thing</h2>
+  <h2>PT copy thingy</h2>
   <div id="container"></div>
 
   <script>
@@ -28,104 +28,72 @@
       const textarea = document.createElement('textarea');
       textarea.id = `txt${index}`;
 
-      const btnUseClipboard = document.createElement('button');
-      btnUseClipboard.textContent = 'Use Clipboard';
-      btnUseClipboard.id = `btnClipboard${index}`;
+      const btnAlpha = document.createElement('button');
+      btnAlpha.textContent = 'Alpha';
+      btnAlpha.id = `btnAlpha${index}`;
 
-      const btnCheck = document.createElement('button');
-      btnCheck.textContent = 'Check Phrase';
-      btnCheck.id = `btnCheck${index}`;
-
-      const btnReplace = document.createElement('button');
-      btnReplace.textContent = 'Replace Phrase';
-      btnReplace.id = `btnReplace${index}`;
+      const btndelta = document.createElement('button');
+      btndelta.textContent = 'delta';
+      btndelta.id = `btndelta${index}`;
 
       div.appendChild(textarea);
-      div.appendChild(btnUseClipboard);
-      div.appendChild(btnCheck);
-      div.appendChild(btnReplace);
+      div.appendChild(btnAlpha);
+      div.appendChild(btndelta);
       document.getElementById('container').appendChild(div);
 
       const row = {
         index,
         textarea,
-        btnUseClipboard,
-        btnCheck,
-        btnReplace,
-        manualEdited: false,
+        btnAlpha,
+        btndelta,
         lastPT: getPT(textarea.value),
         lastClickTime: 0
       };
 
-      textarea.addEventListener('input', () => {
-        row.manualEdited = true;
-        row.lastPT = getPT(textarea.value);
-      });
-
-      btnUseClipboard.addEventListener('click', async () => {
-        const now = Date.now();
-        if (now - row.lastClickTime < 500) return;
-        row.lastClickTime = now;
-
-        const textArea = row.textarea;
-
-        if (row.manualEdited) {
-          navigator.clipboard.writeText(textArea.value);
-          row.manualEdited = false;
-          return;
-        }
-
-        let clipText = await navigator.clipboard.readText();
-        clipText = clipText.trim();
-        const words = clipText.split(/\s+/);
-        const lastWord = words.at(-1);
-
-        if (!/^pt\d+$/i.test(lastWord)) {
-          navigator.clipboard.writeText(textArea.value);
-          flash(btnUseClipboard, 'red');
-          return;
-        }
-
-        if (row.lastPT.toLowerCase() === lastWord.toLowerCase()) {
-          flash(btnUseClipboard, 'yellow');
-          return;
-        }
-
-        const newText = replacePT(textArea.value, lastWord);
-        if (newText !== null) {
-          textArea.value = newText;
-          navigator.clipboard.writeText(newText);
-          row.manualEdited = false;
-          row.lastPT = lastWord;
-          flash(btnUseClipboard, 'green');
-        } else {
-          navigator.clipboard.writeText(textArea.value);
-          flash(btnUseClipboard, 'red');
-        }
-      });
-
-      btnCheck.addEventListener('click', () => {
-        const txt = row.textarea.value.toLowerCase();
-        if (txt.includes('alpha bravo charlie')) {
-          flash(btnCheck, 'green');
-        } else {
-          flash(btnCheck, 'red');
-        }
-      });
-
-      btnReplace.addEventListener('click', () => {
-        const txt = row.textarea.value;
-        if (txt.toLowerCase().includes('alpha bravo charlie')) {
-          const replaced = txt.replace(/alpha bravo charlie/gi, 'eggshell fortnite');
-          row.textarea.value = replaced;
-          row.manualEdited = true;
-          flash(btnReplace, 'green');
-        } else {
-          flash(btnReplace, 'red');
-        }
-      });
+      btnAlpha.addEventListener('click', () => handleClick(row, 'alpha bravo charlie'));
+      btndelta.addEventListener('click', () => handleClick(row, 'delta echo'));
 
       return row;
+    }
+
+    async function handleClick(row, endingPhrase) {
+      const now = Date.now();
+      if (now - row.lastClickTime < 500) return;
+      row.lastClickTime = now;
+
+      const textarea = row.textarea;
+      let originalText = textarea.value.trim();
+      let text = originalText;
+
+      let clipText = await navigator.clipboard.readText();
+      clipText = clipText.trim();
+      const words = clipText.split(/\s+/);
+      const lastWord = words.at(-1);
+
+      let didPT = false;
+
+      if (/^pt\d+$/i.test(lastWord)) {
+        const newText = replacePT(text, lastWord);
+        if (newText !== null && getPT(text).toLowerCase() !== lastWord.toLowerCase()) {
+          text = newText;
+          row.lastPT = lastWord;
+          didPT = true;
+        }
+      }
+
+      // Remove current alpha/delta ending if present
+      text = text.replace(/\b(alpha bravo charlie|delta echo)\s*$/i, '').trim();
+
+      // Add new ending
+      text += ' ' + endingPhrase;
+
+      textarea.value = text;
+      await navigator.clipboard.writeText(text);
+
+      flash(
+        endingPhrase === 'alpha bravo charlie' ? row.btnAlpha : row.btndelta,
+        didPT ? 'green' : 'yellow'
+      );
     }
 
     function flash(button, color) {
@@ -135,7 +103,7 @@
       setTimeout(() => {
         button.classList.remove(cls);
         button.disabled = false;
-      }, 1000);
+      }, 500);
     }
 
     function getPT(text) {
@@ -175,3 +143,4 @@
   </script>
 </body>
 </html>
+`
