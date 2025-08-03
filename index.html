@@ -28,18 +28,30 @@
       const textarea = document.createElement('textarea');
       textarea.id = `txt${index}`;
 
-      const button = document.createElement('button');
-      button.textContent = 'Use Clipboard';
-      button.id = `btn${index}`;
+      const btnUseClipboard = document.createElement('button');
+      btnUseClipboard.textContent = 'Use Clipboard';
+      btnUseClipboard.id = `btnClipboard${index}`;
+
+      const btnCheck = document.createElement('button');
+      btnCheck.textContent = 'Check Phrase';
+      btnCheck.id = `btnCheck${index}`;
+
+      const btnReplace = document.createElement('button');
+      btnReplace.textContent = 'Replace Phrase';
+      btnReplace.id = `btnReplace${index}`;
 
       div.appendChild(textarea);
-      div.appendChild(button);
+      div.appendChild(btnUseClipboard);
+      div.appendChild(btnCheck);
+      div.appendChild(btnReplace);
       document.getElementById('container').appendChild(div);
 
       const row = {
         index,
         textarea,
-        button,
+        btnUseClipboard,
+        btnCheck,
+        btnReplace,
         manualEdited: false,
         lastPT: getPT(textarea.value),
         lastClickTime: 0
@@ -50,14 +62,13 @@
         row.lastPT = getPT(textarea.value);
       });
 
-      button.addEventListener('click', async () => {
+      btnUseClipboard.addEventListener('click', async () => {
         const now = Date.now();
         if (now - row.lastClickTime < 500) return;
         row.lastClickTime = now;
 
         const textArea = row.textarea;
 
-        // Manual edit → copy and exit
         if (row.manualEdited) {
           navigator.clipboard.writeText(textArea.value);
           row.manualEdited = false;
@@ -71,12 +82,12 @@
 
         if (!/^pt\d+$/i.test(lastWord)) {
           navigator.clipboard.writeText(textArea.value);
-          flash(button, 'red');
+          flash(btnUseClipboard, 'red');
           return;
         }
 
         if (row.lastPT.toLowerCase() === lastWord.toLowerCase()) {
-          flash(button, 'yellow');
+          flash(btnUseClipboard, 'yellow');
           return;
         }
 
@@ -86,10 +97,31 @@
           navigator.clipboard.writeText(newText);
           row.manualEdited = false;
           row.lastPT = lastWord;
-          flash(button, 'green');
+          flash(btnUseClipboard, 'green');
         } else {
           navigator.clipboard.writeText(textArea.value);
-          flash(button, 'red');
+          flash(btnUseClipboard, 'red');
+        }
+      });
+
+      btnCheck.addEventListener('click', () => {
+        const txt = row.textarea.value.toLowerCase();
+        if (txt.includes('alpha bravo charlie')) {
+          flash(btnCheck, 'green');
+        } else {
+          flash(btnCheck, 'red');
+        }
+      });
+
+      btnReplace.addEventListener('click', () => {
+        const txt = row.textarea.value;
+        if (txt.toLowerCase().includes('alpha bravo charlie')) {
+          const replaced = txt.replace(/alpha bravo charlie/gi, 'eggshell fortnite');
+          row.textarea.value = replaced;
+          row.manualEdited = true;
+          flash(btnReplace, 'green');
+        } else {
+          flash(btnReplace, 'red');
         }
       });
 
@@ -119,7 +151,6 @@
       return null;
     }
 
-    // Load from localStorage
     function loadState() {
       for (let i = 1; i <= rowCount; i++) {
         const saved = localStorage.getItem(`row${i}`);
@@ -130,14 +161,12 @@
       }
     }
 
-    // Save to localStorage
     window.addEventListener('beforeunload', () => {
       rows.forEach((row, i) => {
         localStorage.setItem(`row${i + 1}`, row.textarea.value);
       });
     });
 
-    // Initialize
     for (let i = 1; i <= rowCount; i++) {
       rows.push(createRow(i));
     }
