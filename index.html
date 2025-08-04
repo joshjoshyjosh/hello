@@ -1,100 +1,276 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" >
 <head>
-  <meta charset="UTF-8">
-  <title>PT copy thingy</title>
+  <meta charset="UTF-8" />
+  <title>ThingyThings</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
-    .row { margin-bottom: 1em; }
-    textarea { width: 80%; height: 60px; }
-    button { padding: 8px 12px; margin-left: 10px; }
-    .flash-red { background-color: #f88 !important; }
-    .flash-yellow { background-color: #ff8 !important; }
-    .flash-green { background-color: #8f8 !important; }
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+    .row {
+      margin-bottom: 1em;
+    }
+    textarea {
+      width: 80%;
+      height: 60px;
+      vertical-align: top;
+    }
+    button {
+      padding: 6px 10px;
+      margin-left: 10px;
+      vertical-align: top;
+    }
+    .flash-red {
+      background-color: #f88 !important;
+    }
+    .flash-yellow {
+      background-color: #ff8 !important;
+    }
+    .flash-green {
+      background-color: #8f8 !important;
+    }
+    #topButtons {
+      margin-bottom: 15px;
+    }
   </style>
 </head>
 <body>
-  <h2>PT copy thingy</h2>
-  <div id="container"></div>
+  <div id="topButtons">
+    <button id="btnMain">PT Tool</button>
+    <button id="btnAlt">Other Thing</button>
+  </div>
+
+  <div id="mainView"></div>
+  <div id="altView" style="display:none"></div>
 
   <script>
-    const rowCount = 50;
-    const rows = [];
+    const ptRowCount = 20;
+    const phoneRowCount = 5;
 
-    function createRow(index) {
+    const btnMain = document.getElementById('btnMain');
+    const btnAlt = document.getElementById('btnAlt');
+    const mainView = document.getElementById('mainView');
+    const altView = document.getElementById('altView');
+
+    const mainKeyPrefix = 'main_row_';
+    const altKeyPrefix = 'alt_row_';
+
+    btnMain.addEventListener('click', () => {
+      mainView.style.display = '';
+      altView.style.display = 'none';
+      btnMain.disabled = true;
+      btnAlt.disabled = false;
+    });
+
+    btnAlt.addEventListener('click', () => {
+      mainView.style.display = 'none';
+      altView.style.display = '';
+      btnMain.disabled = false;
+      btnAlt.disabled = true;
+    });
+
+    btnMain.disabled = true;
+
+    // --- Main View (PT Tool) Functions ---
+
+    function createPTrow(index, container, pagePrefix) {
       const div = document.createElement('div');
       div.className = 'row';
 
+      const label = document.createElement('label');
+      label.textContent = `PT Row ${index}`;
+      label.style.display = 'block';
+      label.style.marginBottom = '3px';
+      div.appendChild(label);
+
       const textarea = document.createElement('textarea');
-      textarea.id = `txt${index}`;
-
-      const btnAlpha = document.createElement('button');
-      btnAlpha.textContent = 'Alpha';
-      btnAlpha.id = `btnAlpha${index}`;
-
-      const btndelta = document.createElement('button');
-      btndelta.textContent = 'delta';
-      btndelta.id = `btndelta${index}`;
-
+      textarea.id = `${pagePrefix}txt${index}`;
       div.appendChild(textarea);
-      div.appendChild(btnAlpha);
-      div.appendChild(btndelta);
-      document.getElementById('container').appendChild(div);
 
-      const row = {
-        index,
-        textarea,
-        btnAlpha,
-        btndelta,
-        lastPT: getPT(textarea.value),
-        lastClickTime: 0
-      };
+      const btnSPC = document.createElement('button');
+      btnSPC.textContent = 'SPC';
+      btnSPC.id = `${pagePrefix}SPC${index}`;
+      div.appendChild(btnSPC);
 
-      btnAlpha.addEventListener('click', () => handleClick(row, 'alpha bravo charlie'));
-      btndelta.addEventListener('click', () => handleClick(row, 'delta echo'));
+      const btnAGL = document.createElement('button');
+      btnAGL.textContent = 'AGL';
+      btnAGL.id = `${pagePrefix}AGL${index}`;
+      div.appendChild(btnAGL);
 
-      return row;
-    }
+      container.appendChild(div);
 
-    async function handleClick(row, endingPhrase) {
-      const now = Date.now();
-      if (now - row.lastClickTime < 500) return;
-      row.lastClickTime = now;
+      const storageKey = `${pagePrefix}${index}`;
+      const saved = localStorage.getItem(storageKey) || '';
+      textarea.value = saved;
 
-      const textarea = row.textarea;
-      let originalText = textarea.value.trim();
-      let text = originalText;
-
-      let clipText = await navigator.clipboard.readText();
-      clipText = clipText.trim();
-      const words = clipText.split(/\s+/);
-      const lastWord = words.at(-1);
-
-      let didPT = false;
-
-      if (/^pt\d+$/i.test(lastWord)) {
-        const newText = replacePT(text, lastWord);
-        if (newText !== null && getPT(text).toLowerCase() !== lastWord.toLowerCase()) {
-          text = newText;
-          row.lastPT = lastWord;
-          didPT = true;
-        }
-      }
-
-      // Remove current alpha/delta ending if present
-      text = text.replace(/\b(alpha bravo charlie|delta echo)\s*$/i, '').trim();
-
-      // Add new ending
-      text += ' ' + endingPhrase;
-
-      textarea.value = text;
-      await navigator.clipboard.writeText(text);
-
-      flash(
-        endingPhrase === 'alpha bravo charlie' ? row.btnAlpha : row.btndelta,
-        didPT ? 'green' : 'yellow'
+      btnSPC.addEventListener('click', () =>
+        handlePTButtonClick(textarea, btnSPC, 'Southern Phone Team', storageKey)
       );
+      btnAGL.addEventListener('click', () =>
+        handlePTButtonClick(textarea, btnAGL, 'AGL Team', storageKey)
+      );
+
+      textarea.addEventListener('input', () => {
+        localStorage.setItem(storageKey, textarea.value);
+      });
     }
+
+    async function handlePTButtonClick(textarea, clickedButton, endingPhrase, storageKey) {
+      try {
+        let text = textarea.value;
+
+        let clipText = await navigator.clipboard.readText();
+        clipText = clipText.trim();
+
+        if (!/^pt\d+$/i.test(clipText)) {
+          flash(clickedButton, 'red');
+          return;
+        }
+
+        const formattedPT = 'PT' + clipText.match(/\d+/)[0];
+
+        const currentPTMatch = text.match(/\bpt\d+\b/i);
+        const currentPT = currentPTMatch ? currentPTMatch[0].toUpperCase() : null;
+
+        if (currentPT === formattedPT.toUpperCase()) {
+          flash(clickedButton, 'yellow');
+          return;
+        }
+
+        if (currentPTMatch) {
+          text = replacePT(text, formattedPT);
+        }
+
+        text = text.replace(/\n?(Southern Phone Team|AGL Team)\s*$/i, '').trimEnd();
+
+        if (text !== '' && !text.endsWith('\n')) {
+          text += '\n';
+        }
+
+        text += endingPhrase;
+
+        textarea.value = text;
+        localStorage.setItem(storageKey, text);
+
+        await navigator.clipboard.writeText(text);
+
+        flash(clickedButton, 'green');
+      } catch (e) {
+        console.error('Error:', e);
+      }
+    }
+
+    function replacePT(text, newPT) {
+      const regex = /\bpt\d+\b/i;
+      return text.replace(regex, newPT);
+    }
+
+    // --- Alternate View (Phone Number Tool) Functions ---
+
+    function createPhoneRow(index, container) {
+      const div = document.createElement('div');
+      div.className = 'row';
+
+      const label = document.createElement('label');
+      label.textContent = `Row ${index}`;
+      label.style.display = 'block';
+      label.style.marginBottom = '3px';
+      div.appendChild(label);
+
+      const textarea = document.createElement('textarea');
+      textarea.id = `${altKeyPrefix}txt${index}`;
+      div.appendChild(textarea);
+
+      const btn1 = document.createElement('button');
+      btn1.textContent = 'Copy';
+      div.appendChild(btn1);
+
+      const btn2 = document.createElement('button');
+      btn2.textContent = 'Append';
+      div.appendChild(btn2);
+
+      container.appendChild(div);
+
+      const storageKey = `${altKeyPrefix}${index}`;
+      const saved = localStorage.getItem(storageKey) || '';
+      textarea.value = saved;
+
+      btn1.addEventListener('click', () => handlePhoneButtonClick(textarea, btn1, 'copy', storageKey));
+      btn2.addEventListener('click', () => handlePhoneButtonClick(textarea, btn2, 'append', storageKey));
+
+      textarea.addEventListener('input', () => {
+        localStorage.setItem(storageKey, textarea.value);
+      });
+    }
+
+    // Function to update the phone number across all alternate textboxes
+    async function updateAllPhoneNumbers() {
+        try {
+            let clipText = await navigator.clipboard.readText();
+            clipText = clipText.trim();
+            const phoneRegex = /^(614|04)?(\d{8})$/;
+            const match = clipText.match(phoneRegex);
+
+            if (!match) {
+                return null; // No valid phone number in clipboard
+            }
+
+            const formattedNumber = `614${match[2]}`;
+            const existingPhoneRegex = /(614\d{8})/;
+
+            for (let i = 1; i <= phoneRowCount; i++) {
+                const textarea = document.getElementById(`${altKeyPrefix}txt${i}`);
+                if (textarea) {
+                    let text = textarea.value;
+                    const existingPhoneMatch = text.match(existingPhoneRegex);
+
+                    if (formattedNumber !== (existingPhoneMatch ? existingPhoneMatch[1] : null)) {
+                        if (existingPhoneMatch) {
+                            text = text.replace(existingPhoneRegex, formattedNumber);
+                        } else {
+                            // If no phone number is present, add it to the top.
+                            text = `${formattedNumber}\n${text}`;
+                        }
+                        textarea.value = text;
+                        localStorage.setItem(`${altKeyPrefix}${i}`, text);
+                    }
+                }
+            }
+            return formattedNumber;
+        } catch (e) {
+            console.error('Error updating phone numbers:', e);
+            return null;
+        }
+    }
+
+
+    async function handlePhoneButtonClick(textarea, clickedButton, buttonType, storageKey) {
+      try {
+        await updateAllPhoneNumbers(); // This now runs and completes without a failure
+
+        let textToCopy = '';
+        if (buttonType === 'copy') {
+          // Button 1: Overwrite clipboard with the full content of the textarea
+          textToCopy = textarea.value;
+        } else if (buttonType === 'append') {
+          // Button 2: Get content from current clipboard, remove the first line of the textarea text, then append
+          let currentClipboard = await navigator.clipboard.readText();
+          let amendedText = textarea.value.substring(textarea.value.indexOf('\n') + 1);
+          textToCopy = `${currentClipboard.trim()}\n${amendedText.trim()}`;
+        }
+        
+        await navigator.clipboard.writeText(textToCopy);
+        flash(clickedButton, 'green');
+
+      } catch (e) {
+        console.error('Error:', e);
+        flash(clickedButton, 'red');
+      }
+    }
+
+    // --- General Functions ---
 
     function flash(button, color) {
       const cls = `flash-${color}`;
@@ -103,44 +279,17 @@
       setTimeout(() => {
         button.classList.remove(cls);
         button.disabled = false;
-      }, 500);
+      }, 800);
     }
 
-    function getPT(text) {
-      const match = text.match(/\bpt\d+\b/i);
-      return match ? match[0] : '';
+    // Initialize both views
+    for (let i = 1; i <= ptRowCount; i++) {
+      createPTrow(i, mainView, mainKeyPrefix);
     }
 
-    function replacePT(text, newPT) {
-      const match = text.match(/\bpt\d+\b/i);
-      if (match) {
-        return text.slice(0, match.index) + newPT + text.slice(match.index + match[0].length);
-      }
-      return null;
+    for (let i = 1; i <= phoneRowCount; i++) {
+      createPhoneRow(i, altView);
     }
-
-    function loadState() {
-      for (let i = 1; i <= rowCount; i++) {
-        const saved = localStorage.getItem(`row${i}`);
-        if (saved) {
-          document.getElementById(`txt${i}`).value = saved;
-          rows[i - 1].lastPT = getPT(saved);
-        }
-      }
-    }
-
-    window.addEventListener('beforeunload', () => {
-      rows.forEach((row, i) => {
-        localStorage.setItem(`row${i + 1}`, row.textarea.value);
-      });
-    });
-
-    for (let i = 1; i <= rowCount; i++) {
-      rows.push(createRow(i));
-    }
-
-    window.addEventListener('load', loadState);
   </script>
 </body>
 </html>
-`
