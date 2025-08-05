@@ -210,7 +210,7 @@
         try {
             let clipText = await navigator.clipboard.readText();
             clipText = clipText.trim();
-            const phoneRegex = /^(614|04)?(\d{8})$/;
+            const phoneRegex = /^(614|4)?(\d{8})$/;
             const match = clipText.match(phoneRegex);
 
             if (!match) {
