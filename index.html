@@ -132,12 +132,12 @@
         div.appendChild(textarea);
 
         const btnIn = document.createElement('button');
-        btnIn.textContent = 'Inbound';
+        btnIn.textContent = 'inbound';
         btnIn.id = `${pagePrefix}In${index}`;
         div.appendChild(btnIn);
 
         const btnOut = document.createElement('button');
-        btnOut.textContent = 'Outbound';
+        btnOut.textContent = 'outbound';
         btnOut.id = `${pagePrefix}Out${index}`;
         div.appendChild(btnOut);
 
@@ -147,8 +147,8 @@
         const saved = localStorage.getItem(storageKey) || '';
         textarea.value = saved;
 
-        btnIn.addEventListener('click', () => handleNotesButtonClick(textarea, btnIn, 'Inbound', storageKey));
-        btnOut.addEventListener('click', () => handleNotesButtonClick(textarea, btnOut, 'Outbound', storageKey));
+        btnIn.addEventListener('click', () => handleNotesButtonClick(textarea, btnIn, 'inbound', storageKey));
+        btnOut.addEventListener('click', () => handleNotesButtonClick(textarea, btnOut, 'outbound', storageKey));
 
         textarea.addEventListener('input', () => {
             localStorage.setItem(storageKey, textarea.value);
@@ -162,7 +162,7 @@
         async function handleNotesButtonClick(textarea, clickedButton, newText, storageKey) {
             try {
                 let text = textarea.value;
-                const oldText = newText === 'Outbound' ? 'Inbound' : 'Outbound';
+                const oldText = newText === 'outbound' ? 'inbound' : 'outbound';
                 const regex = new RegExp(`\\b${oldText}\\b`, 'gi');
                 
                 const initialText = text;
@@ -410,3 +410,4 @@
     </script>
 </body>
 </html>
+
