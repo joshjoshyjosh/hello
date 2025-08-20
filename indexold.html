@@ -132,12 +132,12 @@
         div.appendChild(textarea);
 
         const btnIn = document.createElement('button');
-        btnIn.textContent = 'inbound';
+        btnIn.textContent = 'Inbound';
         btnIn.id = `${pagePrefix}In${index}`;
         div.appendChild(btnIn);
 
         const btnOut = document.createElement('button');
-        btnOut.textContent = 'outbound';
+        btnOut.textContent = 'Outbound';
         btnOut.id = `${pagePrefix}Out${index}`;
         div.appendChild(btnOut);
 
@@ -147,8 +147,8 @@
         const saved = localStorage.getItem(storageKey) || '';
         textarea.value = saved;
 
-        btnIn.addEventListener('click', () => handleNotesButtonClick(textarea, btnIn, 'inbound', storageKey));
-        btnOut.addEventListener('click', () => handleNotesButtonClick(textarea, btnOut, 'outbound', storageKey));
+        btnIn.addEventListener('click', () => handleNotesButtonClick(textarea, btnIn, 'Inbound', storageKey));
+        btnOut.addEventListener('click', () => handleNotesButtonClick(textarea, btnOut, 'Outbound', storageKey));
 
         textarea.addEventListener('input', () => {
             localStorage.setItem(storageKey, textarea.value);
@@ -162,7 +162,7 @@
         async function handleNotesButtonClick(textarea, clickedButton, newText, storageKey) {
             try {
                 let text = textarea.value;
-                const oldText = newText === 'outbound' ? 'inbound' : 'outbound';
+                const oldText = newText === 'Outbound' ? 'Inbound' : 'Outbound';
                 const regex = new RegExp(`\\b${oldText}\\b`, 'gi');
                 
                 const initialText = text;
@@ -235,47 +235,55 @@
         async function handlePTButtonClick(textarea, clickedButton, endingPhrase, storageKey) {
             try {
                 let text = textarea.value;
+                let clipText = (await navigator.clipboard.readText()).trim();
 
-                let clipText = await navigator.clipboard.readText();
-                clipText = clipText.trim();
-
-                if (!/^pt\d+$/i.test(clipText)) {
-                    flash(clickedButton, 'red');
-                    return;
+                const isValidPT = /^pt\d+$/i.test(clipText);
+                let formattedPT = null;
+                if (isValidPT) {
+                    formattedPT = 'PT' + clipText.match(/\d+/)[0];
                 }
-
-                const formattedPT = 'PT' + clipText.match(/\d+/)[0];
 
                 const currentPTMatch = text.match(/\bpt\d+\b/i);
                 const currentPT = currentPTMatch ? currentPTMatch[0].toUpperCase() : null;
 
-                if (currentPT === formattedPT.toUpperCase()) {
+                if (!isValidPT) {
+
+                    await navigator.clipboard.writeText(text);
                     flash(clickedButton, 'yellow');
-                    return;
+                } else if (currentPT && currentPT === formattedPT.toUpperCase()) {
+
+                    await navigator.clipboard.writeText(text);
+                    flash(clickedButton, 'yellow');
+                } else {
+
+                    if (currentPTMatch) {
+                        text = replacePT(text, formattedPT);
+                    }
                 }
 
-                if (currentPTMatch) {
-                    text = replacePT(text, formattedPT);
-                }
 
-                text = text.replace(/\n?(Southern Phone Team|AGL Team)\s*$/i, '').trimEnd();
+                text = text.replace(/\s*(?:\r?\n)?(?:Southern Phone Team|AGL Team)\s*$/i, '').trimEnd();
 
-                if (text !== '' && !text.endsWith('\n')) {
+                if (text !== '' && !/\r?\n$/.test(text)) {
                     text += '\n';
                 }
-
                 text += endingPhrase;
+
 
                 textarea.value = text;
                 localStorage.setItem(storageKey, text);
-
                 await navigator.clipboard.writeText(text);
 
-                flash(clickedButton, 'green');
+
+                if (isValidPT && (!currentPT || currentPT !== formattedPT.toUpperCase())) {
+                    flash(clickedButton, 'green');
+                }
             } catch (e) {
                 console.error('Error:', e);
             }
         }
+
+
 
         function replacePT(text, newPT) {
             const regex = /\bpt\d+\b/i;
@@ -410,4 +418,3 @@
     </script>
 </body>
 </html>
-
