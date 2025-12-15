@@ -3,61 +3,49 @@
 <head>
     <meta charset="UTF-8" />
     <title>ThingyThings</title>
-  <style>
-      body {
-          font-family: sans-serif;
-          padding: 20px;
-          background: #f0f0f0;
-      }
-      .row {
-          margin-bottom: 1em;
-      }
-      textarea {
-          width: 80%;
-          height: 60px;
-          vertical-align: top;
-      }
-      button {
-          padding: 6px 10px;
-          margin-left: 10px;
-          vertical-align: top;
-      }
-      .flash-red {
-          background-color: #f88 !important;
-      }
-      .flash-yellow {
-          background-color: #ff8 !important;
-      }
-      .flash-green {
-          background-color: #8f8 !important;
-      }
-      .flash-blue {
-          background-color: #88f !important;
-      }
-      #topButtons {
-          margin-bottom: 15px;
-      }
-      .editable-label {
-          display: block;
-          margin-bottom: 3px;
-          border: 1px solid transparent; /* Keeps the spacing consistent */
-          padding: 2px;
-          cursor: pointer;
-      }
-      .editable-label:hover {
-          background-color: #e9e9e9;
-      }
-      .editable-label:focus {
-          outline: 1px solid #007bff;
-          background-color: #fff;
-      }
-  </style>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .row {
+            margin-bottom: 1em;
+        }
+        textarea {
+            width: 80%;
+            height: 60px;
+            vertical-align: top;
+        }
+        button {
+            padding: 6px 10px;
+            margin-left: 10px;
+            vertical-align: top;
+        }
+        .flash-red { background-color: #f88 !important; }
+        .flash-yellow { background-color: #ff8 !important; }
+        .flash-green { background-color: #8f8 !important; }
+        .flash-blue { background-color: #88f !important; }
+        #topButtons { margin-bottom: 15px; }
+        .editable-label {
+            display: block;
+            margin-bottom: 3px;
+            border: 1px solid transparent;
+            padding: 2px;
+            cursor: pointer;
+        }
+        .editable-label:hover { background-color: #e9e9e9; }
+        .editable-label:focus { outline: 1px solid #007bff; background-color: #fff; }
+    </style>
 </head>
 <body>
     <div id="topButtons">
         <button id="btnMain">PT Tool</button>
         <button id="btnAlt">Other Thing</button>
         <button id="btnNotes">Notes</button>
+        <button id="btnDownload">Download All</button>
+        <button id="btnUpload">Upload All</button>
+        <input type="file" id="fileInput" style="display:none"/>
     </div>
 
     <div id="mainView"></div>
@@ -71,19 +59,24 @@
 
         const btnMain = document.getElementById('btnMain');
         const btnAlt = document.getElementById('btnAlt');
-        const btnNotes = document.getElementById('btnNotes')
+        const btnNotes = document.getElementById('btnNotes');
+        const btnDownload = document.getElementById('btnDownload');
+        const btnUpload = document.getElementById('btnUpload');
+        const fileInput = document.getElementById('fileInput');
+
         const mainView = document.getElementById('mainView');
         const altView = document.getElementById('altView');
-        const notesView = document.getElementById('notesView')
+        const notesView = document.getElementById('notesView');
 
         const mainKeyPrefix = 'main_row_';
         const altKeyPrefix = 'alt_row_';
         const notesKeyPrefix = 'notes_row_';
 
-      const mainLabelKeyPrefix = 'main_label_';
-      const altLabelKeyPrefix = 'alt_label_';
-      const notesLabelKeyPrefix = 'notes_label_';        
+        const mainLabelKeyPrefix = 'main_label_';
+        const altLabelKeyPrefix = 'alt_label_';
+        const notesLabelKeyPrefix = 'notes_label_';
 
+        // --- View Switching ---
         btnMain.addEventListener('click', () => {
             mainView.style.display = '';
             altView.style.display = 'none';
@@ -92,7 +85,6 @@
             btnAlt.disabled = false;
             btnNotes.disabled = false;
         });
-
         btnAlt.addEventListener('click', () => {
             mainView.style.display = 'none';
             altView.style.display = '';
@@ -101,7 +93,6 @@
             btnAlt.disabled = true;
             btnNotes.disabled = false;
         });
-
         btnNotes.addEventListener('click', () => {
             mainView.style.display = 'none';
             altView.style.display = 'none';
@@ -110,66 +101,122 @@
             btnAlt.disabled = false;
             btnNotes.disabled = true;
         });
-
         btnMain.disabled = true;
 
-        // --- Main View (PT Tool) Functions ---
+        // --- Flash Helper ---
+        function flash(button, color) {
+            const cls = `flash-${color}`;
+            button.classList.add(cls);
+            button.disabled = true;
+            setTimeout(() => {
+                button.classList.remove(cls);
+                button.disabled = false;
+            }, 800);
+        }
 
-      function createNotesrow(index, container, pagePrefix, labelPrefix) {
-        const div = document.createElement('div');
-        div.className = 'row';
+        // --- PT Tool Functions ---
+        function createPTrow(index, container, pagePrefix, labelPrefix) {
+            const div = document.createElement('div');
+            div.className = 'row';
 
-        const label = document.createElement('span');
-        label.className = 'editable-label';
-        label.contentEditable = true;
+            const label = document.createElement('span');
+            label.className = 'editable-label';
+            label.contentEditable = true;
+            label.textContent = localStorage.getItem(`${labelPrefix}${index}`) || `PT Row ${index}`;
+            label.addEventListener('blur', () => localStorage.setItem(`${labelPrefix}${index}`, label.textContent));
+            div.appendChild(label);
 
-        const savedLabel = localStorage.getItem(`${labelPrefix}${index}`);
-        label.textContent = savedLabel || `Notes Row ${index}`;
-        div.appendChild(label);
+            const textarea = document.createElement('textarea');
+            textarea.id = `${pagePrefix}txt${index}`;
+            textarea.value = localStorage.getItem(`${pagePrefix}${index}`) || '';
+            textarea.addEventListener('input', () => localStorage.setItem(`${pagePrefix}${index}`, textarea.value));
+            div.appendChild(textarea);
 
-        const textarea = document.createElement('textarea');
-        textarea.id = `${pagePrefix}txt${index}`;
-        div.appendChild(textarea);
+            const btnSPC = document.createElement('button');
+            btnSPC.textContent = 'SPC';
+            btnSPC.addEventListener('click', () => handlePTButtonClick(textarea, btnSPC, 'Southern Phone Team', `${pagePrefix}${index}`));
+            div.appendChild(btnSPC);
 
-        const btnIn = document.createElement('button');
-        btnIn.textContent = 'Inbound';
-        btnIn.id = `${pagePrefix}In${index}`;
-        div.appendChild(btnIn);
+            const btnAGL = document.createElement('button');
+            btnAGL.textContent = 'AGL';
+            btnAGL.addEventListener('click', () => handlePTButtonClick(textarea, btnAGL, 'AGL Team', `${pagePrefix}${index}`));
+            div.appendChild(btnAGL);
 
-        const btnOut = document.createElement('button');
-        btnOut.textContent = 'Outbound';
-        btnOut.id = `${pagePrefix}Out${index}`;
-        div.appendChild(btnOut);
+            container.appendChild(div);
+        }
 
-        container.appendChild(div);
+        async function handlePTButtonClick(textarea, clickedButton, endingPhrase, storageKey) {
+            try {
+                let text = textarea.value;
+                let clipText = (await navigator.clipboard.readText()).trim();
 
-        const storageKey = `${pagePrefix}${index}`;
-        const saved = localStorage.getItem(storageKey) || '';
-        textarea.value = saved;
+                const isValidPT = /^pt\d+$/i.test(clipText);
+                let formattedPT = isValidPT ? 'PT' + clipText.match(/\d+/)[0] : null;
 
-        btnIn.addEventListener('click', () => handleNotesButtonClick(textarea, btnIn, 'Inbound', storageKey));
-        btnOut.addEventListener('click', () => handleNotesButtonClick(textarea, btnOut, 'Outbound', storageKey));
+                const currentPTMatch = text.match(/\bpt\d+\b/i);
+                const currentPT = currentPTMatch ? currentPTMatch[0].toUpperCase() : null;
 
-        textarea.addEventListener('input', () => {
-            localStorage.setItem(storageKey, textarea.value);
-        });
+                if (!isValidPT || (currentPT && currentPT === formattedPT.toUpperCase())) {
+                    await navigator.clipboard.writeText(text);
+                    flash(clickedButton, 'yellow');
+                    return;
+                }
 
-        label.addEventListener('blur', () => {
-            localStorage.setItem(`${labelPrefix}${index}`, label.textContent);
-        });
-    }
+                if (currentPTMatch) text = text.replace(currentPTMatch[0], formattedPT);
+
+                // Replace any existing team mention anywhere
+                text = text.replace(/\b(Southern Phone Team|AGL Team)\b/gi, endingPhrase);
+
+                textarea.value = text;
+                localStorage.setItem(storageKey, text);
+                await navigator.clipboard.writeText(text);
+                flash(clickedButton, 'green');
+            } catch (e) {
+                console.error(e);
+                flash(clickedButton, 'red');
+            }
+        }
+
+        // --- Notes Tool Functions ---
+        function createNotesrow(index, container, pagePrefix, labelPrefix) {
+            const div = document.createElement('div');
+            div.className = 'row';
+
+            const label = document.createElement('span');
+            label.className = 'editable-label';
+            label.contentEditable = true;
+            label.textContent = localStorage.getItem(`${labelPrefix}${index}`) || `Notes Row ${index}`;
+            label.addEventListener('blur', () => localStorage.setItem(`${labelPrefix}${index}`, label.textContent));
+            div.appendChild(label);
+
+            const textarea = document.createElement('textarea');
+            textarea.id = `${pagePrefix}txt${index}`;
+            textarea.value = localStorage.getItem(`${pagePrefix}${index}`) || '';
+            textarea.addEventListener('input', () => localStorage.setItem(`${pagePrefix}${index}`, textarea.value));
+            div.appendChild(textarea);
+
+            const btnIn = document.createElement('button');
+            btnIn.textContent = 'Inbound';
+            btnIn.addEventListener('click', () => handleNotesButtonClick(textarea, btnIn, 'Inbound', `${pagePrefix}${index}`));
+            div.appendChild(btnIn);
+
+            const btnOut = document.createElement('button');
+            btnOut.textContent = 'Outbound';
+            btnOut.addEventListener('click', () => handleNotesButtonClick(textarea, btnOut, 'Outbound', `${pagePrefix}${index}`));
+            div.appendChild(btnOut);
+
+            container.appendChild(div);
+        }
 
         async function handleNotesButtonClick(textarea, clickedButton, newText, storageKey) {
             try {
                 let text = textarea.value;
                 const oldText = newText === 'Outbound' ? 'Inbound' : 'Outbound';
                 const regex = new RegExp(`\\b${oldText}\\b`, 'gi');
-                
-                const initialText = text;
-                let newContent = text.replaceAll(regex, newText);
+                const newContent = text.replace(regex, newText);
 
-                if (newContent === initialText) {
-                    await navigator.clipboard.writeText(initialText);
+                if (newContent === text) {
+                    await navigator.clipboard.writeText(text);
                     flash(clickedButton, 'blue');
                 } else {
                     textarea.value = newContent;
@@ -178,121 +225,12 @@
                     flash(clickedButton, 'green');
                 }
             } catch (e) {
-                console.error('Error:', e);
+                console.error(e);
                 flash(clickedButton, 'red');
             }
         }
 
-
-      function createPTrow(index, container, pagePrefix, labelPrefix) {
-          const div = document.createElement('div');
-          div.className = 'row';
-
-          const label = document.createElement('span');
-          label.className = 'editable-label';
-          label.contentEditable = true;
-
-          const savedLabel = localStorage.getItem(`${labelPrefix}${index}`);
-          label.textContent = savedLabel || `PT Row ${index}`;
-          div.appendChild(label);
-
-          const textarea = document.createElement('textarea');
-          textarea.id = `${pagePrefix}txt${index}`;
-          div.appendChild(textarea);
-
-          const btnSPC = document.createElement('button');
-          btnSPC.textContent = 'SPC';
-          btnSPC.id = `${pagePrefix}SPC${index}`;
-          div.appendChild(btnSPC);
-
-          const btnAGL = document.createElement('button');
-          btnAGL.textContent = 'AGL';
-          btnAGL.id = `${pagePrefix}AGL${index}`;
-          div.appendChild(btnAGL);
-
-          container.appendChild(div);
-
-          const storageKey = `${pagePrefix}${index}`;
-          const saved = localStorage.getItem(storageKey) || '';
-          textarea.value = saved;
-
-          btnSPC.addEventListener('click', () =>
-              handlePTButtonClick(textarea, btnSPC, 'Southern Phone Team', storageKey)
-          );
-          btnAGL.addEventListener('click', () =>
-              handlePTButtonClick(textarea, btnAGL, 'AGL Team', storageKey)
-          );
-
-          textarea.addEventListener('input', () => {
-              localStorage.setItem(storageKey, textarea.value);
-          });
-
-          label.addEventListener('blur', () => {
-              localStorage.setItem(`${labelPrefix}${index}`, label.textContent);
-          });
-      }
-
-        async function handlePTButtonClick(textarea, clickedButton, endingPhrase, storageKey) {
-            try {
-                let text = textarea.value;
-                let clipText = (await navigator.clipboard.readText()).trim();
-
-                const isValidPT = /^pt\d+$/i.test(clipText);
-                let formattedPT = null;
-                if (isValidPT) {
-                    formattedPT = 'PT' + clipText.match(/\d+/)[0];
-                }
-
-                const currentPTMatch = text.match(/\bpt\d+\b/i);
-                const currentPT = currentPTMatch ? currentPTMatch[0].toUpperCase() : null;
-
-                if (!isValidPT) {
-
-                    await navigator.clipboard.writeText(text);
-                    flash(clickedButton, 'yellow');
-                } else if (currentPT && currentPT === formattedPT.toUpperCase()) {
-
-                    await navigator.clipboard.writeText(text);
-                    flash(clickedButton, 'yellow');
-                } else {
-
-                    if (currentPTMatch) {
-                        text = replacePT(text, formattedPT);
-                    }
-                }
-
-
-                text = text.replace(/\s*(?:\r?\n)?(?:Southern Phone Team|AGL Team)\s*$/i, '').trimEnd();
-
-                if (text !== '' && !/\r?\n$/.test(text)) {
-                    text += '\n';
-                }
-                text += endingPhrase;
-
-
-                textarea.value = text;
-                localStorage.setItem(storageKey, text);
-                await navigator.clipboard.writeText(text);
-
-
-                if (isValidPT && (!currentPT || currentPT !== formattedPT.toUpperCase())) {
-                    flash(clickedButton, 'green');
-                }
-            } catch (e) {
-                console.error('Error:', e);
-            }
-        }
-
-
-
-        function replacePT(text, newPT) {
-            const regex = /\bpt\d+\b/i;
-            return text.replace(regex, newPT);
-        }
-
-        // --- Alternate View (Phone Number Tool) Functions ---
-
-
+        // --- Phone Number Tool ---
         function createPhoneRow(index, container) {
             const div = document.createElement('div');
             div.className = 'row';
@@ -305,116 +243,78 @@
 
             const textarea = document.createElement('textarea');
             textarea.id = `${altKeyPrefix}txt${index}`;
+            textarea.value = localStorage.getItem(`${altKeyPrefix}${index}`) || '';
+            textarea.addEventListener('input', () => localStorage.setItem(`${altKeyPrefix}${index}`, textarea.value));
             div.appendChild(textarea);
 
-            const btn1 = document.createElement('button');
-            btn1.textContent = 'Copy';
-            div.appendChild(btn1);
+            const btnCopy = document.createElement('button');
+            btnCopy.textContent = 'Copy';
+            btnCopy.addEventListener('click', async () => {
+                await navigator.clipboard.writeText(textarea.value);
+                flash(btnCopy, 'green');
+            });
+            div.appendChild(btnCopy);
 
-            const btn2 = document.createElement('button');
-            btn2.textContent = 'Append';
-            div.appendChild(btn2);
+            const btnAppend = document.createElement('button');
+            btnAppend.textContent = 'Append';
+            btnAppend.addEventListener('click', async () => {
+                let clip = await navigator.clipboard.readText();
+                let amendedText = textarea.value.substring(textarea.value.indexOf('\n') + 1);
+                await navigator.clipboard.writeText(`${clip.trim()}\n${amendedText.trim()}`);
+                flash(btnAppend, 'green');
+            });
+            div.appendChild(btnAppend);
 
             container.appendChild(div);
-
-            const storageKey = `${altKeyPrefix}${index}`;
-            const saved = localStorage.getItem(storageKey) || '';
-            textarea.value = saved;
-
-            btn1.addEventListener('click', () => handlePhoneButtonClick(textarea, btn1, 'copy', storageKey));
-            btn2.addEventListener('click', () => handlePhoneButtonClick(textarea, btn2, 'append', storageKey));
-
-            textarea.addEventListener('input', () => {
-                localStorage.setItem(storageKey, textarea.value);
-            });
         }
 
-        // Function to update the phone number across all alternate textboxes
-        async function updateAllPhoneNumbers() {
-            try {
-                let clipText = await navigator.clipboard.readText();
-                clipText = clipText.trim();
-                const phoneRegex = /^(614|4)?(\d{8})$/;
-                const match = clipText.match(phoneRegex);
+        // --- Initialize Rows ---
+        for (let i = 1; i <= ptRowCount; i++) createPTrow(i, mainView, mainKeyPrefix, mainLabelKeyPrefix);
+        for (let i = 1; i <= phoneRowCount; i++) createPhoneRow(i, altView);
+        for (let i = 1; i <= notesRowCount; i++) createNotesrow(i, notesView, notesKeyPrefix, notesLabelKeyPrefix);
 
-                if (!match) {
-                    return null; // No valid phone number in clipboard
-                }
-
-                const formattedNumber = `614${match[2]}`;
-                const existingPhoneRegex = /(614\d{8})/;
-
-                for (let i = 1; i <= phoneRowCount; i++) {
-                    const textarea = document.getElementById(`${altKeyPrefix}txt${i}`);
-                    if (textarea) {
-                        let text = textarea.value;
-                        const existingPhoneMatch = text.match(existingPhoneRegex);
-
-                        if (formattedNumber !== (existingPhoneMatch ? existingPhoneMatch[1] : null)) {
-                            if (existingPhoneMatch) {
-                                text = text.replace(existingPhoneRegex, formattedNumber);
-                            } else {
-                                // If no phone number is present, add it to the top.
-                                text = `${formattedNumber}\n${text}`;
-                            }
-                            textarea.value = text;
-                            localStorage.setItem(`${altKeyPrefix}${i}`, text);
-                        }
-                    }
-                }
-                return formattedNumber;
-            } catch (e) {
-                console.error('Error updating phone numbers:', e);
-                return null;
+        // --- Download & Upload ---
+        btnDownload.addEventListener('click', () => {
+            const allData = {};
+            for (let i = 1; i <= ptRowCount; i++) {
+                allData[`${mainKeyPrefix}${i}`] = localStorage.getItem(`${mainKeyPrefix}${i}`) || '';
+                allData[`${mainLabelKeyPrefix}${i}`] = localStorage.getItem(`${mainLabelKeyPrefix}${i}`) || '';
             }
-        }
-
-        async function handlePhoneButtonClick(textarea, clickedButton, buttonType, storageKey) {
-            try {
-                await updateAllPhoneNumbers();
-
-                let textToCopy = '';
-                if (buttonType === 'copy') {
-                    textToCopy = textarea.value;
-                } else if (buttonType === 'append') {
-                    let currentClipboard = await navigator.clipboard.readText();
-                    let amendedText = textarea.value.substring(textarea.value.indexOf('\n') + 1);
-                    textToCopy = `${currentClipboard.trim()}\n${amendedText.trim()}`;
-                }
-                
-                await navigator.clipboard.writeText(textToCopy);
-                flash(clickedButton, 'green');
-
-            } catch (e) {
-                console.error('Error:', e);
-                flash(clickedButton, 'red');
+            for (let i = 1; i <= phoneRowCount; i++) {
+                allData[`${altKeyPrefix}${i}`] = localStorage.getItem(`${altKeyPrefix}${i}`) || '';
             }
-        }
+            for (let i = 1; i <= notesRowCount; i++) {
+                allData[`${notesKeyPrefix}${i}`] = localStorage.getItem(`${notesKeyPrefix}${i}`) || '';
+                allData[`${notesLabelKeyPrefix}${i}`] = localStorage.getItem(`${notesLabelKeyPrefix}${i}`) || '';
+            }
 
-        // --- General Functions ---
+            const blob = new Blob([JSON.stringify(allData)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'thingythings_backup.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
 
-        function flash(button, color) {
-            const cls = `flash-${color}`;
-            button.classList.add(cls);
-            button.disabled = true;
-            setTimeout(() => {
-                button.classList.remove(cls);
-                button.disabled = false;
-            }, 800);
-        }
+        btnUpload.addEventListener('click', () => fileInput.click());
 
-        // Initialize both views
-      for (let i = 1; i <= ptRowCount; i++) {
-          createPTrow(i, mainView, mainKeyPrefix, mainLabelKeyPrefix);
-      }
-
-      for (let i = 1; i <= phoneRowCount; i++) {
-          createPhoneRow(i, altView, altKeyPrefix, altLabelKeyPrefix);
-      }
-
-      for (let i = 1; i <= notesRowCount; i++) {
-          createNotesrow(i, notesView, notesKeyPrefix, notesLabelKeyPrefix);
-      }
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    Object.keys(data).forEach(k => localStorage.setItem(k, data[k]));
+                    location.reload();
+                } catch (err) {
+                    alert('Invalid JSON file');
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        });
     </script>
 </body>
 </html>
