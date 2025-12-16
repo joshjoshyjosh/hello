@@ -151,31 +151,44 @@
                 let clipText = (await navigator.clipboard.readText()).trim();
 
                 const isValidPT = /^pt\d+$/i.test(clipText);
-                let formattedPT = isValidPT ? 'PT' + clipText.match(/\d+/)[0] : null;
+                const formattedPT = isValidPT ? 'PT' + clipText.match(/\d+/)[0] : null;
 
                 const currentPTMatch = text.match(/\bpt\d+\b/i);
                 const currentPT = currentPTMatch ? currentPTMatch[0].toUpperCase() : null;
 
-                if (!isValidPT || (currentPT && currentPT === formattedPT.toUpperCase())) {
-                    await navigator.clipboard.writeText(text);
-                    flash(clickedButton, 'yellow');
-                    return;
+                let ptChanged = false;
+
+                // ✅ Replace PT ONLY if a new valid PT is provided and it's different
+                if (isValidPT && (!currentPT || currentPT !== formattedPT)) {
+                    if (currentPTMatch) {
+                        text = text.replace(currentPTMatch[0], formattedPT);
+                    }
+                    ptChanged = true;
                 }
 
-                if (currentPTMatch) text = text.replace(currentPTMatch[0], formattedPT);
-
-                // Replace any existing team mention anywhere
-                text = text.replace(/\b(Southern Phone Team|AGL Team)\b/gi, endingPhrase);
+                // ✅ ALWAYS replace the team in-place, regardless of PT
+                text = text.replace(
+                    /\b(Southern Phone Team|AGL Team)\b/gi,
+                    endingPhrase
+                );
 
                 textarea.value = text;
                 localStorage.setItem(storageKey, text);
                 await navigator.clipboard.writeText(text);
-                flash(clickedButton, 'green');
+
+                // ✅ Feedback color
+                if (ptChanged) {
+                    flash(clickedButton, 'green');
+                } else {
+                    flash(clickedButton, 'blue'); // team-only change
+                }
+
             } catch (e) {
                 console.error(e);
                 flash(clickedButton, 'red');
             }
         }
+
 
         // --- Notes Tool Functions ---
         function createNotesrow(index, container, pagePrefix, labelPrefix) {
