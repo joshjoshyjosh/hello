@@ -242,6 +242,66 @@
                 flash(clickedButton, 'red');
             }
         }
+        async function updateAllPhoneNumbers() {
+            try {
+                let clipText = await navigator.clipboard.readText();
+                clipText = clipText.trim();
+                const phoneRegex = /^(614|4)?(\d{8})$/;
+                const match = clipText.match(phoneRegex);
+
+                if (!match) {
+                    return null; // No valid phone number in clipboard
+                }
+
+                const formattedNumber = `614${match[2]}`;
+                const existingPhoneRegex = /(614\d{8})/;
+
+                for (let i = 1; i <= phoneRowCount; i++) {
+                    const textarea = document.getElementById(`${altKeyPrefix}txt${i}`);
+                    if (textarea) {
+                        let text = textarea.value;
+                        const existingPhoneMatch = text.match(existingPhoneRegex);
+
+                        if (formattedNumber !== (existingPhoneMatch ? existingPhoneMatch[1] : null)) {
+                            if (existingPhoneMatch) {
+                                text = text.replace(existingPhoneRegex, formattedNumber);
+                            } else {
+                                // If no phone number is present, add it to the top.
+                                text = `${formattedNumber}\n${text}`;
+                            }
+                            textarea.value = text;
+                            localStorage.setItem(`${altKeyPrefix}${i}`, text);
+                        }
+                    }
+                }
+                return formattedNumber;
+            } catch (e) {
+                console.error('Error updating phone numbers:', e);
+                return null;
+            }
+        }
+
+        async function handlePhoneButtonClick(textarea, clickedButton, buttonType, storageKey) {
+            try {
+                await updateAllPhoneNumbers();
+
+                let textToCopy = '';
+                if (buttonType === 'copy') {
+                    textToCopy = textarea.value;
+                } else if (buttonType === 'append') {
+                    let currentClipboard = await navigator.clipboard.readText();
+                    let amendedText = textarea.value.substring(textarea.value.indexOf('\n') + 1);
+                    textToCopy = `${currentClipboard.trim()}\n${amendedText.trim()}`;
+                }
+                
+                await navigator.clipboard.writeText(textToCopy);
+                flash(clickedButton, 'green');
+
+            } catch (e) {
+                console.error('Error:', e);
+                flash(clickedButton, 'red');
+            }
+        }
 
         // --- Phone Number Tool ---
         function createPhoneRow(index, container) {
@@ -262,20 +322,12 @@
 
             const btnCopy = document.createElement('button');
             btnCopy.textContent = 'Copy';
-            btnCopy.addEventListener('click', async () => {
-                await navigator.clipboard.writeText(textarea.value);
-                flash(btnCopy, 'green');
-            });
+            btnCopy.addEventListener('click', () => handlePhoneButtonClick(textarea, btnCopy, 'copy', `${altKeyPrefix}${index}`));
             div.appendChild(btnCopy);
 
             const btnAppend = document.createElement('button');
             btnAppend.textContent = 'Append';
-            btnAppend.addEventListener('click', async () => {
-                let clip = await navigator.clipboard.readText();
-                let amendedText = textarea.value.substring(textarea.value.indexOf('\n') + 1);
-                await navigator.clipboard.writeText(`${clip.trim()}\n${amendedText.trim()}`);
-                flash(btnAppend, 'green');
-            });
+            btnAppend.addEventListener('click', () => handlePhoneButtonClick(textarea, btnAppend, 'append', `${altKeyPrefix}${index}`));
             div.appendChild(btnAppend);
 
             container.appendChild(div);
